@@ -1,24 +1,17 @@
 package mode.retail.polaroid.mx.retailmode;
 
-import android.Manifest;
-import android.app.ActivityManager;
 import android.app.KeyguardManager;
-import android.app.NotificationManager;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.PixelFormat;
 import android.media.MediaPlayer;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.PowerManager;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -30,14 +23,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 import android.widget.VideoView;
 
-import com.google.android.gms.appindexing.Action;
-import com.google.android.gms.appindexing.AppIndex;
-import com.google.android.gms.appindexing.Thing;
-import com.google.android.gms.common.api.GoogleApiClient;
-
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +42,7 @@ public class RetailModeActivity extends AppCompatActivity {
 
     private static final String TAG = "RetailModeActivity";
 
-    private String PATH_VIDEOS_DOWNLOAD = "/storage/emulated/0/Download/";
+    private String PATH_VIDEOS_DOWNLOAD = String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS));//"/storage/emulated/0/Download/";
 
     boolean KEY_CLOSE_APP = false;
 
@@ -68,59 +54,16 @@ public class RetailModeActivity extends AppCompatActivity {
     //
     private ComponentName mAdminComponentName;
     private DevicePolicyManager mDevicePolicyManager;
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    private GoogleApiClient client;
 
     @Override
     protected void onStart() {
-        super.onStart();// ATTENTION: This was auto-generated to implement the App Indexing API.
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.connect();
-
-        try {
-            //SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
-            //SharedPreferences.Editor editor = sharedPref.edit();
-            //editor.putString("password", "123");
-            //editor.commit();
-
-            // clearing app data
-            /*String packageName = getApplicationContext().getPackageName();
-            Runtime runtime = Runtime.getRuntime();
-            runtime.exec("adb root");
-            runtime.exec("adb shell setenfoerce 0 v");
-            runtime.exec("adb shell");
-            runtime.exec("sqlite> update secure set value=123456 where name='lockscreen.password_type';");
-            runtime.exec("sqlite> .exit");
-            runtime.exec("adb reboot");*/
-        } catch (Exception e) {
-            System.err.println(e);
-        }
-
-        // start lock task mode if it's not already active
-        ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        // ActivityManager.getLockTaskModeState api is not available in pre-M.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            if (!am.isInLockTaskMode()) {
-                //startLockTask();
-            }
-        } else {
-            if (am.getLockTaskModeState() == ActivityManager.LOCK_TASK_MODE_NONE) {
-                //startLockTask();
-            }
-        }
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.start(client, getIndexApiAction());
+        super.onStart();
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        context = getApplicationContext();
+        context = this.getApplicationContext();
 
         contTouch = 0;
         KEY_CLOSE_APP = false;
@@ -135,8 +78,6 @@ public class RetailModeActivity extends AppCompatActivity {
                 intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mAdminComponentName);
                 intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Retail Mode requiere ser administrador");
                 startActivityForResult(intent, 1);
-
-                //setDefaultCosuPolicies(true);
             } else {
                 System.err.println("SÍ ES ADMIN");
             }
@@ -151,14 +92,6 @@ public class RetailModeActivity extends AppCompatActivity {
         this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getSupportActionBar().hide();
         setContentView(R.layout.activity_retail_mode);
-
-        /* ScreeenReceiver */
-        //IntentFilter filter = new IntentFilter( Intent.ACTION_SCREEN_ON );
-        //filter.addAction( Intent.ACTION_SCREEN_OFF );
-        //registerReceiver(new ScreenReceiver(), filter);
-
-        //policyManager = new PolicyManager(this);
-        //policyManager.disableAdmin();
 
         //Stop TimerService
         if (null != myService) {
@@ -184,11 +117,11 @@ public class RetailModeActivity extends AppCompatActivity {
             @Override
             public void onCompletion(MediaPlayer mp) {
                 if (videos.size() > contadorVideos) {
-                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + videos.get(contadorVideos).getName());
+                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + File.separator + videos.get(contadorVideos).getName());
                     // Incrementa posicion de videos
                     contadorVideos++;
                 } else {
-                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + videos.get(0).getName());
+                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + File.separator + videos.get(0).getName());
                     contadorVideos = 1;
                 }
                 videoView.requestFocus();
@@ -196,9 +129,11 @@ public class RetailModeActivity extends AppCompatActivity {
             }
         });
 
+        // Receiver
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_ON);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction(Intent.ACTION_USER_PRESENT);
         registerReceiver(new ScreenReceiver(), filter);
 
         ComponentName mDeviceAdminSample;
@@ -215,63 +150,20 @@ public class RetailModeActivity extends AppCompatActivity {
             intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mDeviceAdminSample);
             intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Retail Mode requiere ser administrador del dispositivo.");
             startActivityForResult(intent, 1);
-
-            /*intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName()));
-            intent.addCategory(Intent.CATEGORY_DEFAULT);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);*/
         } else {
-            Toast.makeText(context, "Con tiene permisos", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "Contiene permisos", Toast.LENGTH_LONG).show();
         }
-/*
-        int adb = Settings.Secure.getInt(context.getContentResolver(),
-                Settings.Secure.ADB_ENABLED, 0);
-        // toggle the USB debugging setting
-        adb = adb == 0 ? 1 : 0;
-        Settings.Secure.putInt(context.getContentResolver(), Settings.Secure.ADB_ENABLED, adb);*/
 
         DevicePolicyManager devicePolicyManager = (DevicePolicyManager) context.getSystemService(context.DEVICE_POLICY_SERVICE);
         try {
             devicePolicyManager.setPasswordQuality(mDeviceAdminSample, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED);
             devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 5);
 
-            boolean result = devicePolicyManager.resetPassword("1234567", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
-            Toast.makeText(context, "button_lock_password_device..." + result, Toast.LENGTH_LONG).show();
+            boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
+            Toast.makeText(context, "The password is configured" + result, Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Log.d(TAG, e.toString());
         }
-
-
-        try {
-            try {
-                Class lockPatternUtilsCls = Class.forName("com.android.internal.widget.LockPatternUtils");
-                Constructor lockPatternUtilsConstructor =
-                        lockPatternUtilsCls.getConstructor(new Class[]{Context.class});
-                lockPatternUtilsConstructor.setAccessible(true);
-                Object lockPatternUtils = lockPatternUtilsConstructor.newInstance(RetailModeActivity.this);
-                Method clearLockMethod = lockPatternUtils.getClass().getMethod("clearLock", boolean.class);
-                clearLockMethod.setAccessible(true);
-                clearLockMethod.invoke(lockPatternUtils, true);
-                Method setLockScreenDisabledMethod = lockPatternUtils.getClass().getMethod("setLockScreenDisabled", boolean.class);
-                setLockScreenDisabledMethod.setAccessible(true);
-                setLockScreenDisabledMethod.invoke(lockPatternUtils, false);
-            } catch (Exception e) {
-                System.err.println("An InvocationTargetException was caught!");
-                Throwable cause = e.getCause();
-            }
-            devicePolicyManager.setPasswordQuality(mDeviceAdminSample, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED);
-            devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 0);
-            boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        //Intent intent = new Intent(Settings.ACTION_SECURITY_SETTINGS);
-        //Intent intent = new Intent(DevicePolicyManager.ACTION_SET_NEW_PASSWORD);
-        //startActivityForResult(intent, 1);
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     public boolean hasPermissions(@NonNull String... permissions) {
@@ -286,7 +178,7 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onResume();  // Always call the superclass method first
         window = this.getWindow();
 
-        clearScreen();
+        unlockScreen();
 
         System.out.println(":::RetailModeActivity->onResume::: " + hasWindowFocus());
 
@@ -322,9 +214,7 @@ public class RetailModeActivity extends AppCompatActivity {
 
     @Override
     public void onStop() {
-        super.onStop();// ATTENTION: This was auto-generated to implement the App Indexing API.
-// See https://g.co/AppIndexing/AndroidStudio for more information.
-        AppIndex.AppIndexApi.end(client, getIndexApiAction());
+        super.onStop();
 
         System.out.println(":::RetailModeActivity->onStop::: " + hasWindowFocus());
 
@@ -332,12 +222,7 @@ public class RetailModeActivity extends AppCompatActivity {
             startForegroundService(myService);
         } else {
             startService(myService);
-
-
         }
-        // ATTENTION: This was auto-generated to implement the App Indexing API.
-        // See https://g.co/AppIndexing/AndroidStudio for more information.
-        client.disconnect();
     }
 
     @Override
@@ -372,10 +257,6 @@ public class RetailModeActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
-
-        }
-
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             return false;
         } else if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
@@ -396,8 +277,6 @@ public class RetailModeActivity extends AppCompatActivity {
      */
     private List<File> readVideosFromDirectory() {
         List<File> videos = new ArrayList<File>();
-        //File f = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        //File f = Environment.getExternalStoragePublicDirectory(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString());
         File f = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
         File files[] = f.listFiles();
@@ -425,49 +304,41 @@ public class RetailModeActivity extends AppCompatActivity {
         return ext;
     }
 
+    public static void unlockScreen() {
+        try {
+            if (!window.isActive()) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+                window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
+                // Unlock the screen
+                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                PowerManager.WakeLock wl = pm.newWakeLock(
+                        PowerManager.FULL_WAKE_LOCK
+                                | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                                | PowerManager.ON_AFTER_RELEASE,
+                        "RetailMode");
+                wl.acquire();
+
+                KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+                KeyguardManager.KeyguardLock kl = km.newKeyguardLock("RetailMode");
+                kl.disableKeyguard();
+            }
+        } catch (Exception e) {
+            Log.d(TAG, e.getStackTrace().toString());
+        }
+    }
+
     public static void clearScreen() {
         try {
-            window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
-            window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-
-            // Unlock the screen
-            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK
-                    | PowerManager.ACQUIRE_CAUSES_WAKEUP
-                    | PowerManager.ON_AFTER_RELEASE, "RetailMode");
-            wl.acquire();
-
-            KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
-            KeyguardManager.KeyguardLock kl = km.newKeyguardLock("RetailMode");
-            kl.disableKeyguard();
+            unlockScreen();
 
             Intent myIntent = new Intent(context, RetailModeActivity.class);
             myIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startService(myIntent);
         } catch (Exception e) {
-
+            Log.d(TAG, e.getStackTrace().toString());
         }
-
-        // unlock screen
-        //unlockScreen();
-    }
-
-    /**
-     * ATTENTION: This was auto-generated to implement the App Indexing API.
-     * See https://g.co/AppIndexing/AndroidStudio for more information.
-     */
-    public Action getIndexApiAction() {
-        Thing object = new Thing.Builder()
-                .setName("RetailMode Page") // TODO: Define a title for the content shown.
-                // TODO: Make sure this auto-generated URL is correct.
-                .setUrl(Uri.parse("http://[ENTER-YOUR-URL-HERE]"))
-                .build();
-        return new Action.Builder(Action.TYPE_VIEW)
-                .setObject(object)
-                .setActionStatus(Action.STATUS_TYPE_COMPLETED)
-                .build();
     }
 }
