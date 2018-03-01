@@ -23,15 +23,6 @@ public class RMDeviceAdminReceiver extends DeviceAdminReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        switch (action) {
-            case Intent.ACTION_SCREEN_OFF:
-                RetailModeActivity.clearScreen();
-                break;
-
-            case Intent.ACTION_SCREEN_ON:
-                // and do whatever you need to do here
-                RetailModeActivity.clearScreen();
-        }
     }
 
     @Override
