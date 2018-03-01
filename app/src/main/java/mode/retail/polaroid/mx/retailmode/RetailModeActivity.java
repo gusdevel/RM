@@ -42,7 +42,7 @@ public class RetailModeActivity extends AppCompatActivity {
 
     private static final String TAG = "RetailModeActivity";
 
-    private String PATH_VIDEOS_DOWNLOAD = "/storage/emulated/0/Download/";
+    private String PATH_VIDEOS_DOWNLOAD = String.valueOf(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS));//"/storage/emulated/0/Download/";
 
     boolean KEY_CLOSE_APP = false;
 
@@ -117,11 +117,11 @@ public class RetailModeActivity extends AppCompatActivity {
             @Override
             public void onCompletion(MediaPlayer mp) {
                 if (videos.size() > contadorVideos) {
-                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + videos.get(contadorVideos).getName());
+                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + File.separator + videos.get(contadorVideos).getName());
                     // Incrementa posicion de videos
                     contadorVideos++;
                 } else {
-                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + videos.get(0).getName());
+                    videoView.setVideoPath(PATH_VIDEOS_DOWNLOAD + File.separator + videos.get(0).getName());
                     contadorVideos = 1;
                 }
                 videoView.requestFocus();
@@ -160,7 +160,7 @@ public class RetailModeActivity extends AppCompatActivity {
             devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 5);
 
             boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
-            Toast.makeText(context, "button_lock_password_device..." + result, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "The password is configured" + result, Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Log.d(TAG, e.toString());
         }
