@@ -1,5 +1,6 @@
 package mode.retail.polaroid.mx.retailmode;
 
+import android.Manifest;
 import android.app.KeyguardManager;
 import android.app.admin.DevicePolicyManager;
 import android.content.ComponentName;
@@ -8,10 +9,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -65,8 +70,29 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         context = this.getApplicationContext();
 
+        ActivityCompat.requestPermissions(RetailModeActivity.this,
+                new String[]{Manifest.permission.WRITE_SECURE_SETTINGS,
+                        Manifest.permission.ACCOUNT_MANAGER,
+                        Manifest.permission.BIND_DEVICE_ADMIN,
+                        Manifest.permission.DISABLE_KEYGUARD,
+                        Manifest.permission.WRITE_SETTINGS,
+                        Manifest.permission.SYSTEM_ALERT_WINDOW,
+                        Manifest.permission.CHANGE_CONFIGURATION,
+                        Manifest.permission.MASTER_CLEAR
+                }, 1);
+
+        // Check if Android M or higher
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+            if (!Settings.canDrawOverlays(this)) {
+                Intent myIntent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+//                myIntent.setData(Uri.parse("package: " + getPackageName()));
+                startActivity(myIntent);
+            }
+        }
+
         contTouch = 0;
         KEY_CLOSE_APP = false;
+
 
         // Don't enable the profile again if this activity is being re-initialized.
         if (null == savedInstanceState) {
@@ -112,7 +138,7 @@ public class RetailModeActivity extends AppCompatActivity {
         videoView.requestFocus();
         videoView.start();
 
-        /* Video bucle */
+    /* Video bucle */
         videoView.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
@@ -139,30 +165,32 @@ public class RetailModeActivity extends AppCompatActivity {
         ComponentName mDeviceAdminSample;
         mDeviceAdminSample = new ComponentName(this, RMDeviceAdminReceiver.class);
 
-        String[] requiredPermissions = new String[]{
-                permission.WRITE_SECURE_SETTINGS
+        if (Settings.canDrawOverlays(this)) {
+            String[] requiredPermissions = new String[]{
+                    permission.WRITE_SECURE_SETTINGS
             /* ETC.. */
-        };
+            };
 
-        Intent intent;
-        if (Build.VERSION.SDK_INT > 22 && !hasPermissions(requiredPermissions)) {
-            intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
-            intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mDeviceAdminSample);
-            intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Retail Mode requiere ser administrador del dispositivo.");
-            startActivityForResult(intent, 1);
-        } else {
-            Toast.makeText(context, "Contiene permisos", Toast.LENGTH_LONG).show();
-        }
+            Intent intent;
+            if (Build.VERSION.SDK_INT > 22 && !hasPermissions(requiredPermissions)) {
+                intent = new Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
+                intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, mDeviceAdminSample);
+                intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Retail Mode requiere ser administrador del dispositivo.");
+                startActivityForResult(intent, 1);
+            } else {
+                Toast.makeText(context, "Contiene permisos", Toast.LENGTH_LONG).show();
+            }
 
-        DevicePolicyManager devicePolicyManager = (DevicePolicyManager) context.getSystemService(context.DEVICE_POLICY_SERVICE);
-        try {
-            devicePolicyManager.setPasswordQuality(mDeviceAdminSample, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED);
-            devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 5);
+            DevicePolicyManager devicePolicyManager = (DevicePolicyManager) context.getSystemService(context.DEVICE_POLICY_SERVICE);
+            try {
+                devicePolicyManager.setPasswordQuality(mDeviceAdminSample, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED);
+                devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 5);
 
-            boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
-            Toast.makeText(context, "The password is configured" + result, Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            Log.d(TAG, e.toString());
+                boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
+                Toast.makeText(context, "The password is configured" + result, Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Log.d(TAG, e.toString());
+            }
         }
     }
 
@@ -178,16 +206,17 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onResume();  // Always call the superclass method first
         window = this.getWindow();
 
-        unlockScreen();
+        if (Settings.canDrawOverlays(this)) {
+            unlockScreen();
+            System.out.println(":::RetailModeActivity->onResume::: " + hasWindowFocus());
 
-        System.out.println(":::RetailModeActivity->onResume::: " + hasWindowFocus());
+            //Stop TimerService
+            if (null != myService) {
+                stopService(myService);
+            }
 
-        //Stop TimerService
-        if (null != myService) {
-            stopService(myService);
+            videoView.start();
         }
-
-        videoView.start();
     }
 
     public void onUserInteraction() {
@@ -207,7 +236,9 @@ public class RetailModeActivity extends AppCompatActivity {
 
 
         System.out.println("::: has windows focus :::");
-        myService = new Intent(RetailModeActivity.this, TimeService.class);
+        if (Settings.canDrawOverlays(this)) {
+            myService = new Intent(RetailModeActivity.this, TimeService.class);
+        }
         //startService(myService);
 
     }
@@ -218,9 +249,13 @@ public class RetailModeActivity extends AppCompatActivity {
 
         System.out.println(":::RetailModeActivity->onStop::: " + hasWindowFocus());
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(myService);
         } else {
+            startService(myService);
+        }*/
+
+        if (Settings.canDrawOverlays(this)) {
             startService(myService);
         }
     }
@@ -234,7 +269,9 @@ public class RetailModeActivity extends AppCompatActivity {
 
         if (contTouch > 2 && KEY_CLOSE_APP) {
             //Stop TimerService
-            stopService(myService);
+            if (Settings.canDrawOverlays(this)) {
+                stopService(myService);
+            }
         }
     }
 
