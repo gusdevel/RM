@@ -4,7 +4,6 @@
     package="mode.retail.polaroid.mx.retailmode">
 
     <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -41,6 +40,7 @@
             android:keepScreenOn="true"
             android:screenOrientation="portrait">
             <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
                 <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
             </intent-filter>
@@ -80,13 +80,28 @@
         <service
             android:name=".services.TimeService"
             android:enabled="true"
-            android:exported="true"
-            android:process=":externalprocess" />
+            android:exported="false"
+            android:stopWithTask="false"
+            android:process=":externalprocess"
+            android:permission="android.permission.BIND_JOB_SERVICE">
+
+            <intent-filter>
+                <action android:name="android.intent.action.START_SERVICE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".services.CloseAppService"
+            android:stopWithTask="false" />
 
         <receiver
             android:name=".receiver.ScreenReceiver"
             android:enabled="true"
-            android:exported="true" />
+            android:exported="true">
+
+            <action android:name="android.intent.action.SCREEN_OFF" />
+            <action android:name="android.intent.action.SCREEN_ON" />
+        </receiver>
         <!--
  ATTENTION: This was auto-generated to add Google Play services to your project for
      App Indexing.  See https://g.co/AppIndexing/AndroidStudio for more information.

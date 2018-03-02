@@ -34,6 +34,7 @@ import java.util.List;
 
 import mode.retail.polaroid.mx.retailmode.receiver.RMDeviceAdminReceiver;
 import mode.retail.polaroid.mx.retailmode.receiver.ScreenReceiver;
+import mode.retail.polaroid.mx.retailmode.services.CloseAppService;
 import mode.retail.polaroid.mx.retailmode.services.TimeService;
 
 import static android.Manifest.*;
@@ -41,9 +42,13 @@ import static android.Manifest.*;
 public class RetailModeActivity extends AppCompatActivity {
 
     private Intent myService;
+    private Intent closeService;
     static Window window;
     static Context context;
     int contTouch = 0;
+
+    private ScreenReceiver screenReceiver = new ScreenReceiver();
+    private boolean isRegisterReceiver = false;
 
     private static final String TAG = "RetailModeActivity";
 
@@ -70,6 +75,8 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         context = this.getApplicationContext();
 
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         ActivityCompat.requestPermissions(RetailModeActivity.this,
                 new String[]{Manifest.permission.WRITE_SECURE_SETTINGS,
                         Manifest.permission.ACCOUNT_MANAGER,
@@ -78,7 +85,7 @@ public class RetailModeActivity extends AppCompatActivity {
                         Manifest.permission.WRITE_SETTINGS,
                         Manifest.permission.SYSTEM_ALERT_WINDOW,
                         Manifest.permission.CHANGE_CONFIGURATION,
-                        Manifest.permission.MASTER_CLEAR
+                        Manifest.permission.WAKE_LOCK
                 }, 1);
 
         // Check if Android M or higher
@@ -89,6 +96,25 @@ public class RetailModeActivity extends AppCompatActivity {
                 startActivity(myIntent);
             }
         }
+
+        window = this.getWindow();
+        window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+
+        // Unlock the screen
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        PowerManager.WakeLock wl = pm.newWakeLock(
+                PowerManager.FULL_WAKE_LOCK
+                        | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                        | PowerManager.ON_AFTER_RELEASE,
+                "RetailMode");
+        wl.acquire();
+
+        KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+        KeyguardManager.KeyguardLock kl = km.newKeyguardLock("RetailMode");
+        kl.disableKeyguard();
 
         contTouch = 0;
         KEY_CLOSE_APP = false;
@@ -155,13 +181,6 @@ public class RetailModeActivity extends AppCompatActivity {
             }
         });
 
-        // Receiver
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.addAction(Intent.ACTION_SCREEN_OFF);
-        filter.addAction(Intent.ACTION_USER_PRESENT);
-        registerReceiver(new ScreenReceiver(), filter);
-
         ComponentName mDeviceAdminSample;
         mDeviceAdminSample = new ComponentName(this, RMDeviceAdminReceiver.class);
 
@@ -180,18 +199,8 @@ public class RetailModeActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(context, "Contiene permisos", Toast.LENGTH_LONG).show();
             }
-
-            DevicePolicyManager devicePolicyManager = (DevicePolicyManager) context.getSystemService(context.DEVICE_POLICY_SERVICE);
-            try {
-                devicePolicyManager.setPasswordQuality(mDeviceAdminSample, DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED);
-                devicePolicyManager.setPasswordMinimumLength(mDeviceAdminSample, 5);
-
-                boolean result = devicePolicyManager.resetPassword("12345", DevicePolicyManager.RESET_PASSWORD_REQUIRE_ENTRY);
-                Toast.makeText(context, "The password is configured" + result, Toast.LENGTH_LONG).show();
-            } catch (Exception e) {
-                Log.d(TAG, e.toString());
-            }
         }
+
     }
 
     public boolean hasPermissions(@NonNull String... permissions) {
@@ -206,17 +215,26 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onResume();  // Always call the superclass method first
         window = this.getWindow();
 
-        if (Settings.canDrawOverlays(this)) {
-            unlockScreen();
-            System.out.println(":::RetailModeActivity->onResume::: " + hasWindowFocus());
+        contTouch = 0;
+        KEY_CLOSE_APP = false;
 
-            //Stop TimerService
-            if (null != myService) {
-                stopService(myService);
-            }
+        // Receiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(screenReceiver, filter);
+        isRegisterReceiver = true;
 
-            videoView.start();
-        }
+        myService = new Intent(getApplicationContext(), TimeService.class);
+        closeService = new Intent(RetailModeActivity.this, CloseAppService.class);
+
+
+        unlockScreen();
+        System.out.println(":::RetailModeActivity->onResume::: " + hasWindowFocus());
+
+        videoView.start();
+        startService(closeService);
     }
 
     public void onUserInteraction() {
@@ -226,21 +244,9 @@ public class RetailModeActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
-
-        contTouch = 0;
-        KEY_CLOSE_APP = false;
+        startService(myService);
 
         System.out.println(":::RetailModeActivity->onPause::: " + hasWindowFocus());
-
-        window = this.getWindow();
-
-
-        System.out.println("::: has windows focus :::");
-        if (Settings.canDrawOverlays(this)) {
-            myService = new Intent(RetailModeActivity.this, TimeService.class);
-        }
-        //startService(myService);
-
     }
 
     @Override
@@ -248,30 +254,22 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onStop();
 
         System.out.println(":::RetailModeActivity->onStop::: " + hasWindowFocus());
-
-        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(myService);
-        } else {
-            startService(myService);
-        }*/
-
-        if (Settings.canDrawOverlays(this)) {
-            startService(myService);
-        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
+        if (isRegisterReceiver) {
+            unregisterReceiver(screenReceiver);
+        }
+
         System.out.println(":::RetailModeActivity->onDestroy:::");
         // The activity is about to be destroyed.
 
         if (contTouch > 2 && KEY_CLOSE_APP) {
-            //Stop TimerService
-            if (Settings.canDrawOverlays(this)) {
-                stopService(myService);
-            }
+            stopService(closeService);
+            stopService(myService);
         }
     }
 
@@ -288,6 +286,8 @@ public class RetailModeActivity extends AppCompatActivity {
                 contTouch++;
             }
         }
+
+        //startService(new Intent(RetailModeActivity.this, CloseAppService.class));
 
         return true;
     }
@@ -343,31 +343,31 @@ public class RetailModeActivity extends AppCompatActivity {
 
     public static void unlockScreen() {
         try {
-            if (!window.isActive()) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-                window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
-                window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-                window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
-                // Unlock the screen
-                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-                PowerManager.WakeLock wl = pm.newWakeLock(
-                        PowerManager.FULL_WAKE_LOCK
-                                | PowerManager.ACQUIRE_CAUSES_WAKEUP
-                                | PowerManager.ON_AFTER_RELEASE,
-                        "RetailMode");
-                wl.acquire();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+            window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE);
 
-                KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
-                KeyguardManager.KeyguardLock kl = km.newKeyguardLock("RetailMode");
-                kl.disableKeyguard();
-            }
+            // Unlock the screen
+            PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+            PowerManager.WakeLock wl = pm.newWakeLock(
+                    PowerManager.FULL_WAKE_LOCK
+                            | PowerManager.ACQUIRE_CAUSES_WAKEUP
+                            | PowerManager.ON_AFTER_RELEASE,
+                    "RetailMode");
+            wl.acquire();
+
+            KeyguardManager km = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+            KeyguardManager.KeyguardLock kl = km.newKeyguardLock("RetailMode");
+            kl.disableKeyguard();
+
         } catch (Exception e) {
             Log.d(TAG, e.getStackTrace().toString());
         }
     }
 
-    public static void clearScreen() {
+    public static void clearScreen(Context context) {
         try {
             unlockScreen();
 
