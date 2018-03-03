@@ -4,6 +4,7 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.os.Handler;
@@ -19,10 +20,13 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 
+import java.io.InputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import mode.retail.polaroid.mx.retailmode.BuildConfig;
 import mode.retail.polaroid.mx.retailmode.RetailModeActivity;
+import mode.retail.polaroid.mx.retailmode.utils.Utilerias;
 
 public class TimeService extends Service implements View.OnTouchListener, View.OnKeyListener {
 
@@ -37,7 +41,7 @@ public class TimeService extends Service implements View.OnTouchListener, View.O
     PowerManager pm;
 
     // constant
-    public static final long NOTIFY_INTERVAL = 15 * 1000; // 10 seconds
+    public static final long NOTIFY_INTERVAL = BuildConfig.TIEMPO_REACTIVACION_ACTIVITY;
 
     Runnable r;
 

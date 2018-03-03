@@ -1,7 +1,12 @@
 package mode.retail.polaroid.mx.retailmode.utils;
 
+import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -37,5 +42,23 @@ public class Utilerias {
             ext = s.substring(i+1).toLowerCase();
         }
         return ext;
+    }
+
+    /**
+     * Método que sirve para obtener las propiedades desde AndroidManifest.xml
+     *
+     * @param context
+     * @param name
+     * @return
+     */
+    public static String getMetaData(Context context, String name) {
+        try {
+            ApplicationInfo ai = context.getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+            Bundle bundle = ai.metaData;
+            return bundle.getString(name);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e("Utilerias", "Unable to load meta-data: " + e.getMessage());
+        }
+        return null;
     }
 }
