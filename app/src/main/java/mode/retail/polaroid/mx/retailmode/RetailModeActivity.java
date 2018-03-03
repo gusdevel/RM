@@ -145,10 +145,6 @@ public class RetailModeActivity extends AppCompatActivity {
         getSupportActionBar().hide();
         setContentView(R.layout.activity_retail_mode);
 
-        //Stop TimerService
-        if (null != myService) {
-            stopService(myService);
-        }
 
         View decorView = getWindow().getDecorView();
         // Hide both the navigation bar and the status bar.
@@ -215,6 +211,15 @@ public class RetailModeActivity extends AppCompatActivity {
         super.onResume();  // Always call the superclass method first
         window = this.getWindow();
 
+        //Stop TimerService
+        if (null != myService) {
+            stopService(myService);
+        } else {
+            myService = new Intent(getApplicationContext(), TimeService.class);
+        }
+
+        closeService = new Intent(RetailModeActivity.this, CloseAppService.class);
+
         contTouch = 0;
         KEY_CLOSE_APP = false;
 
@@ -225,9 +230,6 @@ public class RetailModeActivity extends AppCompatActivity {
         filter.addAction(Intent.ACTION_USER_PRESENT);
         registerReceiver(screenReceiver, filter);
         isRegisterReceiver = true;
-
-        myService = new Intent(getApplicationContext(), TimeService.class);
-        closeService = new Intent(RetailModeActivity.this, CloseAppService.class);
 
 
         unlockScreen();
@@ -247,6 +249,11 @@ public class RetailModeActivity extends AppCompatActivity {
         startService(myService);
 
         System.out.println(":::RetailModeActivity->onPause::: " + hasWindowFocus());
+
+        if (contTouch > 2 && KEY_CLOSE_APP) {
+            stopService(closeService);
+            stopService(myService);
+        }
     }
 
     @Override
@@ -265,12 +272,6 @@ public class RetailModeActivity extends AppCompatActivity {
         }
 
         System.out.println(":::RetailModeActivity->onDestroy:::");
-        // The activity is about to be destroyed.
-
-        if (contTouch > 2 && KEY_CLOSE_APP) {
-            stopService(closeService);
-            stopService(myService);
-        }
     }
 
 
