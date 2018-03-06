@@ -250,7 +250,7 @@ public class RetailModeActivity extends AppCompatActivity {
 
         System.out.println(":::RetailModeActivity->onPause::: " + hasWindowFocus());
 
-        if (contTouch > 2 && KEY_CLOSE_APP) {
+        if (contTouch > 1 && KEY_CLOSE_APP) {
             stopService(closeService);
             stopService(myService);
         }
